@@ -1,0 +1,168 @@
+Makefile
+obj-y	 += mem.o  //编译进内核
+obj-m += mem.o //编译成模块
+obj-$(CONFIG_LEGACY_PTYS)	+= pty.o
+如果再配置文件CONFIG_LEGACY_PTYS=y 那么将被编译进内核
+配置文件是auto.conf,auto.conf来源于.config。就是make menuconfig后生成的。
+.config还会生成auotconf.h供c源码使用。
+将多个文件编译到内核
+obj-y=a.o b.o
+将多个文件编译组合成模块：
+obj-$(CONFIG_ISDN) += isdn.o
+		isdn-objs := isdn_net_lib.o isdn_v110.o isdn_common.o
+		
+		分析Makefile,首先找到执行的命令make uImage.在arch/arm/Makefile  227
+		zImage Image xipImage bootpImage uImage: vmlinux
+	$(Q)$(MAKE) $(build)=$(boot) MACHINE=$(MACHINE) $(boot)/$@
+	那么在根目录下执行make之所以能找到该命令，在于顶层Makfiel将这个Makefile包含进去了
+414	include $(srctree)/arch/$(ARCH)/Makefile
+443	-include include/config/auto.conf
+
+ uImage: vmlinux //arch/arm/Makefile 
+ all: vmlinux  //顶层Makefle
+ vmlinux: $(vmlinux-lds) $(vmlinux-init) $(vmlinux-main) $(kallsyms.o) FORCE//顶层Makefle743
+ 
+ vmlinux-init := $(head-y) $(init-y)  //顶层Makefle
+ vmlinux-main := $(core-y) $(libs-y) $(drivers-y) $(net-y)//顶层Makefle
+ vmlinux-all  := $(vmlinux-init) $(vmlinux-main)//顶层Makefle
+ vmlinux-lds  := arch/$(ARCH)/kernel/vmlinux.lds//顶层Makefle
+ 
+ head-y		:= arch/arm/kernel/head$(MMUEXT).o arch/arm/kernel/init_task.o//arch/arm/Makefile 
+ init-y		:= init/       //顶层Makefle，标识的是整个文件夹下的文件编译成.o文件
+ drivers-y	:= drivers/ sound/ 							//顶层Makefle
+ net-y		:= net/   											//顶层Makefle
+ libs-y		:= lib/													//顶层Makefle
+ core-y		:= usr/											//顶层Makefle
+ core-y		+= kernel/ mm/ fs/ ipc/ security/ crypto/ block/
+ 
+ init-y		:= $(patsubst %/, %/built-in.o, $(init-y)) //目录下所有文件编译成build-in.o
+core-y		:= $(patsubst %/, %/built-in.o, $(core-y))
+drivers-y	:= $(patsubst %/, %/built-in.o, $(drivers-y))
+net-y		:= $(patsubst %/, %/built-in.o, $(net-y))
+libs-y1		:= $(patsubst %/, %/lib.a, $(libs-y))
+libs-y2		:= $(patsubst %/, %/built-in.o, $(libs-y))
+libs-y		:= $(libs-y1) $(libs-y2)
+
+make uImag v=1  //编译内核并输出详细信息
+vmlinux.lds 是根据arch/arm/kernel/vmlinux.lds.S生成的。
+如果出现arm-linux-gcc 未找到，是因为root权限下没有配置环境变量。
+切换到root权限，vim /etc/enviorment 添加下面路径信息
+PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/work/tools/gcc-3.4.5-glibc-2.3.6/bin"
+Image Name:   Linux-2.6.22.6
+Created:      Wed Feb  7 21:47:10 2018
+Image Type:   ARM Linux Kernel Image (uncompressed)
+Data Size:    1848692 Bytes = 1805.36 kB = 1.76 MB
+Load Address: 0x30008000       //对应uboot的header
+Entry Point:  0x30008000
+ Image arch/arm/boot/uImage is ready
+ 
+ 内核启动分析：入口函数arch/arm/kernel/head.S
+ 1、处理uboot传入的参数
+ 2、启动根文件系统下的应用程序
+ENTRY(stext)  //内核入口点
+bl	__lookup_processor_type		@ r5=procinfo r9=cpuid//调用函数，输入参数r9=cpuid,返回值r5=procinfo
+bl	__lookup_machine_type		@ r5=machinfo //调用函数，返回值r5=machinfo，判断是否支持该单板，和板子相关
+//gd->bd->bi_arch_number = MACH_TYPE_SMDK2410;即machine_type	，是uboot传入的
+//theKernel (0, bd->bi_arch_number, bd->bi_boot_params);//调用内核
+  __arch_info_begin = .;
+   *(.arch.info.init)
+  __arch_info_end = .;架构信息段在.lds中定义
+  grep  ".arch.info.init" *-nR 
+  搜索.arch.info.init找到下面一个宏定义
+  //定义了两个宏MACHINE_START(_type,_name)和MACHINE_END
+  #define MACHINE_START(_type,_name)			\
+static const struct machine_desc __mach_desc_##_type	\  //##_type被_type替换
+ __used							\
+ __attribute__((__section__(".arch.info.init"))) = {	\  //存储在.arch.info.init中
+	.nr		= MACH_TYPE_##_type,		\
+	.name		= _name,
+
+#define MACHINE_END				\
+};
+/*mach-smdk2440.c*/
+MACHINE_START(S3C2440, "SMDK2440")
+	/* Maintainer: Ben Dooks <ben@fluff.org> */
+	.phys_io	= S3C2410_PA_UART,
+	.io_pg_offst	= (((u32)S3C24XX_VA_UART) >> 18) & 0xfffc,
+	.boot_params	= S3C2410_SDRAM_PA + 0x100,
+
+	.init_irq	= s3c24xx_init_irq,
+	.map_io		= smdk2440_map_io,
+	.init_machine	= smdk2440_machine_init,
+	.timer		= &s3c24xx_timer,
+MACHINE_END
+
+#define MACHINE_END				\
+};                  //MACHINE_END=};
+
+MACHINE_START(S3C2440, "SMDK2440")
+static const struct machine_desc __mach_desc_S3C2440				\
+ __used							\
+ __attribute__((__section__(".arch.info.init"))) = {				\  //存储在.arch.info.init中
+	.nr		= MACH_TYPE_S3C2440,		\ /* architecture number	*/
+	.name		="SMDK2440",
+	.phys_io	= S3C2410_PA_UART, /* start of physical io	*/
+	.io_pg_offst	= (((u32)S3C24XX_VA_UART) >> 18) & 0xfffc,
+	.boot_params	= S3C2410_SDRAM_PA + 0x100,
+	.init_irq	= s3c24xx_init_irq,
+	.map_io		= smdk2440_map_io,
+	.init_machine	= smdk2440_machine_init,
+	.timer		= &s3c24xx_timer,
+	};
+ENTRY(stext)
+	mov	pc, r13  //跳转到 __switch_data
+	ldr	r13, __switch_data	
+		_switch_data:
+		b	start_kernel
+			start_kernel	
+				setup_arch(&command_line);
+					mdesc = setup_machine(machine_arch_type);
+					init_arch_irq = mdesc->init_irq;
+					system_timer = mdesc->timer;
+					init_machine = mdesc->init_machine;//smdk2440_machine_init
+				setup_command_line(command_line);//处理uboot传入的参数
+				rest_init();
+					kernel_thread(kernel_init, NULL, CLONE_FS | CLONE_SIGHAND);
+						kernel_init
+							prepare_namespace();
+								root_device_name = saved_root_name;
+								mount_root();           //挂接根文件系统
+							init_post();//加载根文件系统里面的应用程序
+	 saved_root_name在哪里保存？						
+	static int __init root_dev_setup(char *line)
+{
+	strlcpy(saved_root_name, line, sizeof(saved_root_name));
+	return 1;
+}
+//解析命令行参数，查找到含有root=的参数，将=号后面的内容存入到saved_root_name中
+__setup("root=", root_dev_setup);
+#define __setup(str, fn)					\
+	__setup_param(str, fn, fn, 0)		
+	
+	#define __setup_param(str, unique_id, fn, early)			\
+	static char __setup_str_##unique_id[] __initdata = str;	\
+	static struct obs_kernel_param __setup_##unique_id	\
+		__attribute_used__				\
+		__attribute__((__section__(".init.setup")))	\
+		__attribute__((aligned((sizeof(long)))))	\
+		= { __setup_str_##unique_id, fn, early }	
+		
+		.init.setup 在连接脚本中定义初始化段
+		 __setup_start = .;
+   *(.init.setup)
+  __setup_end = .;
+		搜索	__setup_start		
+		obsolete_checksetup（） //main.c
+		和
+		static int __init do_early_param(char *param, char *val)
+{
+	for (p = __setup_start; p < __setup_end; p++) {
+		if (p->early && strcmp(param, p->str) == 0) {
+		}
+	}
+
+}
+start_kernel
+	parse_early_param();
+		parse_args("early options", tmp_cmdline, NULL, 0, do_early_param);
+			parse_early_param

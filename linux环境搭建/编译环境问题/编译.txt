@@ -1,0 +1,7 @@
+1.在ubutu1104上安装了4.3.3的交叉编译工具，解压到目录/usr/local/arm/4.3.3
+
+在/etc/environment添加了环境变量。shell中 输入：arm-linux-gcc -v 提示有版本信息。
+
+2.sudo make zImage 时报错/sbin:arm-linux-gcc not found
+
+在root权限下输入命令：export PATH=$PATH:/usr/local/arm/4.3.3/bin 然后重新启动

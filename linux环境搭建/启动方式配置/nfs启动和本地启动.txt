@@ -1,0 +1,20 @@
+设定网络启动
+虚拟机开启nfs服务
+1、#sudo apt-get install nfs-kernel-server
+ubuntu12.04中的已经是最新版本了，无需安装
+2、sudo /etc/init.d/nfs-kernel-server restart
+3、sudo mount -t nfs localhost:/work/nfsroot/firstfs /mnt
+4、sudo umount /mnt  //虚拟机中的挂载
+5、 umount /mnt  //开发板中之前挂载的
+6、  mount -t nfs -o nolock,vers=2 192.168.0.111:/work/nfsroot/firstfs /mn
+7、setenv bootargs 'noinitrd console=ttySAC0 root=/dev/nfs nfsroot=192.168.0.111:/work/nfsroot/firstfs 
+ip=192.168.0.112:192.168.0.111:192.168.0.1:255.255.255.0::eth0:off'
+8、save
+9、重新启动
+  设定本地启动
+ setenv bootargs 'root=/dev/mtdblock3 init=/linuxrc console=ttySAC0,115200 rootfstype=yaffs2'
+uboot中使用nfs下载内核到sdram中并启动
+ 	nfs 30000000 192.168.0.111:/home/chao/work/uImage_nohid
+	bootm 30000000
+	挂载文件系统
+  mount -t nfs -o nolock，vers=2 192.168.0.111:/home/chao/work /mnt

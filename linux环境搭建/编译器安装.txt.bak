@@ -1,0 +1,3 @@
+1、tar xjf arm-linux-gcc-3.4.5-glibc-2.3.6.tar.bz2
+2、export PATH=$PATH:/work/tools/gcc-3.4.5-glibc-2.3.6/bin   指定执行文件路径
+3、vim /etc/environment  末尾添加 /work/tools/gcc-3.4.5-glibc-2.3.6/bin。和前面的用冒号隔开
