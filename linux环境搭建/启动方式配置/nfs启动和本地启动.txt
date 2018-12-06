@@ -6,7 +6,7 @@ ubuntu12.04中的已经是最新版本了，无需安装
 3、sudo mount -t nfs localhost:/work/nfsroot/firstfs /mnt
 4、sudo umount /mnt  //虚拟机中的挂载
 5、 umount /mnt  //开发板中之前挂载的
-6、  mount -t nfs -o nolock,vers=2 192.168.0.111:/work/nfsroot/firstfs /mn
+6、  mount -t nfs -o nolock,vers=2 192.168.0.111:/work/nfsroot/firstfs /mnt
 7、setenv bootargs 'noinitrd console=ttySAC0 root=/dev/nfs nfsroot=192.168.0.111:/work/nfsroot/firstfs 
 ip=192.168.0.112:192.168.0.111:192.168.0.1:255.255.255.0::eth0:off'
 8、save
